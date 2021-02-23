@@ -32,18 +32,21 @@ Les requêtes sont formulées aux bases de données à l'aide d'un protocole RES
 Pour ce TP nous utiliserons la bases de données [Intact](https://www.ebi.ac.uk/intact/), dont le service PSICQUIC est accessible à l'URL: `http://www.ebi.ac.uk/Tools/webservices/psicquic/intact/webservices/current/search`.
 Par exemple, les 100 premières interactions protéine-protéine humaines disponibles dans Intact sont accessibles via l'URL: `http://www.ebi.ac.uk/Tools/webservices/psicquic/intact/webservices/current/search/query/species:human?firstResult=0&maxResults=100`
 
-##### Quelles sont les significations des champs suivants du format MITAB 2.X?
+##### Quelles sont les significations des champs suivants du format MITAB 2.8?
 
 Numero de champ | Signification Biologique|
  --- | --- 
-1 | 
-2 |
-3 |
-4 |
-5 |
-6 |
+1 | Unique identifier for interactor A
+2 | Unique identifier for interactor B
+3 | Alternative identifier for interactor A
+4 | Alternative identifier for interactor B
+5 | Aliases for A
+6 | Aliases for B
+7 | Interaction detection methods
+8 | First author
+9 | Identifier of the publication
 
-##### Utiliser le PMID de la publication pour récuperer les lignes MITAB des interactions rapportées dans l'étude.
+##### Utiliser le PMID(17446270) de la publication pour récuperer les lignes MITAB des interactions rapportées dans l'étude.
 Une librairie pratique pour manipuler des requêtes HTTP est [requests](https://requests.readthedocs.io/en/master/), eg:
 
 ```python
@@ -55,6 +58,16 @@ try:
 except NameError:
     httpReq = requests.get(url)
 ans = httpReq.text
+```
+Out: 
+```
+uniprotkb:Q82235	uniprotkb:Q9DBG9	intact:EBI-1162486	intact:EBI-1161647	psi-mi:q82235_9dela(display_long)|uniprotkb:tax(gene name)|psi-mi:tax(display_short)	psi-mi:tx1b3_mouse(display_long)|uniprotkb:Tax interaction protein 1(gene name synonym)|uniprotkb:Tax1bp3(gene name)|psi-mi:Tax1bp3(display_short)	psi-mi:"MI:0096"(pull down)	Kanamori et al. (2003)	pubmed:12874278	taxid:11908(humt-)|taxid:11908(Human T-lymphotropic virus 1)	taxid:10090(mouse)|taxid:10090(Mus musculus)	psi-mi:"MI:0407"(direct interaction)	psi-mi:"MI:0469"(IntAct)	intact:EBI-1162495	intact-miscore:0.44
+uniprotkb:P04578	uniprotkb:B0FAM1	intact:EBI-6163496|uniprotkb:O09779	intact:EBI-6163546	psi-mi:env_hv1h2(display_long)|uniprotkb:env(gene name)|psi-mi:env(display_short)|uniprotkb:Env polyprotein(gene name synonym)	psi-mi:b0fam1_9hiv1(display_long)|uniprotkb:env(gene name)|psi-mi:env(display_short)	psi-mi:"MI:0007"(anti tag coimmunoprecipitation)	Jager et al. (2012)	psi-mi:"MI:0007"|imex:IM-17346|pubmed:22190034	taxid:11706(hv1h2)|taxid:11706("Human immunodeficiency virus type 1 group M subtype B (isolate HXB2) (HIV-1)")	taxid:11676(9hiv1)|taxid:11676(Human immunodeficiency virus 1)	psi-mi:"MI:0914"(association)	psi-mi:"MI:0469"(IntAct)	intact:EBI-6174316|imex:IM-17346-4	intact-miscore:0.35
+.
+.
+.
+uniprotkb:Q9Q2G4	uniprotkb:Q9UGP4	intact:EBI-6248094	intact:EBI-2652871|uniprotkb:Q17RQ1|uniprotkb:Q9BQQ9|uniprotkb:Q9NQ47	psi-mi:q9q2g4_9hiv1(display_long)|uniprotkb:ORF(gene name)|psi-mi:ORF(display_short)|uniprotkb:Retropepsin(gene name synonym)	psi-mi:limd1_human(display_long)|uniprotkb:LIMD1(gene name)|psi-mi:LIMD1(display_short)	psi-mi:"MI:0096"(pull down)	Jager et al. (2012)	psi-mi:"MI:0007"|imex:IM-17346|pubmed:22190034	taxid:11676(9hiv1)|taxid:11676(Human immunodeficiency virus 1)	taxid:9606(human)|taxid:9606(Homo sapiens)	psi-mi:"MI:0914"(association)	psi-mi:"MI:0469"(IntAct)	intact:EBI-6177860|imex:IM-17346-61	intact-miscore:0.56
+
 ```
 
 ##### Quelles techniques experimentales mesurent les interactions rapportées dans cette publication?
@@ -92,7 +105,9 @@ def isMitab_EBV_EBV(mitabArray):
     return False
 
 def isMitab_Human_EBV(mitabLine):
-    # Je ferai ça plus tard
+    reHuman = 'taxid:9606'
+    if re.search(reHuman, mitabArray[9]) or re.search(reHuman, mitabArray[10]):
+        return True
     return False
 
 
@@ -119,12 +134,30 @@ print(f"Nombre total d'interactions {total}, EBV-EBV {len(EBV_EBV_mitab)}")
 - Extraire les lignes MITAB impliquant uniquement des protéines d'EBV, quel est leur nombre ?
 - Extraire les lignes MITAB impliquant des protéines humaines et des protéines d'EBV, quel est leur nombre ?
 ```
+Nombre total d'interactions 230, EBV-EBV 59, EBV-Human 171
 ```
 
 ##### Combien de protéines humaines et virales sont respectivement dans les jeux d'interactions EBV-Human et EBV-EBV ?
 
-```
+```python
+EBV_protein = set()
+for data in EBV_EBV_mitab:
+    EBV_protein.add(data[0])
+    EBV_protein.add(data[1])
+print(f"{len(EBV_protein)} EBV proteins")
 
+Human_protein = set()
+for data in EBV_Human_mitab:
+    Human_protein.add(data[0])
+    Human_protein.add(data[1])
+
+Human_protein = Human_protein - EBV_protein
+print(f"{len(Human_protein)} Human proteins")
+```
+Out: 
+```
+48 EBV proteins
+129 Human proteins
 ```
 
 ###### Pour la suite du travail assurez-vous d'avoir les deux jeux de données MITAB suivants
@@ -143,12 +176,32 @@ A l'aide des données MITAB et de la librarie [networkx](https://networkx.github
 
 - les arêtes relient deux protéines en interaction
 
-![Graphique](ebv_ebv_network_uniprot.png)
+```python
+%matplotlib inline
+import matplotlib.pyplot as plt
+
+import networkx as nx
+G = nx.Graph()
+
+plt.figure(figsize=(10,8))
+
+for data in EBV_EBV_mitab:
+    p1 = data[0]
+    p2 = data[1]
+    G.add_edge(p1, p2)
+
+nx.draw(G, with_labels=True, font_weight='bold', node_size=500)
+#plt.show()
+#or
+plt.savefig("ebv_ebv_network_uniprot.png")
+```
+
+![Graphique](MADP_TP2/ebv_ebv_network_uniprot.png)
 
 ##### Décrivez brièvement ce réseau
 
 ```
-
+taille de la plus grande composante, discussion avec le nom des gènes.
 ```
 
 Les noms de gènes sont parfois plus parlants que des accesseurs UNIPROT. A l'aide du fichier `./data/Calderwood_EBV_proteome.xml`  créez une table de conversion entre accesseur UNIPROT et nom de gène.
@@ -208,7 +261,42 @@ Vous pouvez desormais dessiner le réseau dans lequel:
 - les arêtes relient deux protéines en interaction
 - les noeuds sont les noms des gènes correspondant aux protéines.
 
-![Graphique](ebv_ebv_network_gene.png)
+Correction:
+```python
+tree = parse('../data/Calderwood_EBV_proteome.xml')
+root = tree.getroot()
+
+EBV_node_label = {
+    #uniprotID : GeneName // uniprotID
+}
+
+for d in EBV_EBV_mitab:
+    for uniprotID in d[:2]:
+        if not uniprotID in EBV_node_label:
+            protData = proteinDict(uniprotID, root)
+            EBV_node_label[uniprotID] = protData['geneName'] if protData['geneName'] else uniprotID
+EBV_node_label
+
+%matplotlib inline
+import matplotlib.pyplot as plt
+
+import networkx as nx
+G = nx.Graph()
+
+plt.figure(figsize=(10,8))
+
+for data in EBV_EBV_mitab:
+    p1 = data[0]
+    p2 = data[1]
+    G.add_edge(p1, p2)
+
+G = nx.relabel_nodes(G, EBV_node_label)
+nx.draw(G, with_labels=True, font_weight='bold', node_size=500)
+#plt.show()
+#or
+plt.savefig("ebv_ebv_network_gene.png")
+```
+![Graphique](MADP_TP2/ebv_ebv_network_gene.png)
 
 ### Caractérisation des cibles protéiques du virus
 
@@ -222,7 +310,33 @@ En suivant, la méthode précédente dessiner le réseau dans lequel:
 
 Vous pouvez jouer sur la taille de la figure et la constante de ressort *k* du rendu [spring_layout](https://networkx.org/documentation/stable/reference/generated/networkx.drawing.layout.spring_layout.html) pour augmenter la lisibilité du graphique
 
-![Graphique](ebv_human_network_gene.png)
+Correction :
+```python
+plt.figure(figsize=(24,18))
+G =nx.Graph()
+
+for data in EBV_Human_mitab:
+    G.add_edge(data[0], data[1])
+
+#get human and ebv node list
+humanNodeName = list(Human_node_label.keys())
+ebvNodeName = list( set(list(G.nodes())) - set(humanNodeName))
+
+#compute layout then draw on it
+pos = nx.spring_layout(G, k=0.1)
+
+#node fonts, shapes and colors
+nx.draw_networkx_nodes(G, pos, ebvNodeName, node_color='red', node_shape='s')
+nx.draw_networkx_nodes(G, pos, humanNodeName, node_color='blue', node_shape='o')
+nx.draw_networkx_edges(G, pos)
+nx.draw_networkx_labels(G, pos, labels=Human_node_label, font_size = 12)
+
+#plt.show()
+#or
+plt.savefig("ebv_human_network_gene.png")
+```
+
+![Graphique](MADP_TP2/ebv_human_network_gene.png)
 
 
 
